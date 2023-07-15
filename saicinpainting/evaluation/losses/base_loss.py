@@ -27,7 +27,7 @@ def get_groupings(groups):
 
     indices = np.argsort(groups)
 
-    grouping = dict()
+    grouping = {}
     cur_start = 0
     for label, count in zip(label_groups, count_groups):
         cur_end = cur_start + count
@@ -65,7 +65,7 @@ class PairwiseScore(EvaluatorScore, ABC):
                 else dict {group_idx: {'mean': score mean among group, 'std': score std among group}}
         """
         individual_values = torch.cat(states, dim=-1).reshape(-1).cpu().numpy() if states is not None \
-            else self.individual_values
+                else self.individual_values
 
         total_results = {
             'mean': individual_values.mean(),
@@ -75,7 +75,7 @@ class PairwiseScore(EvaluatorScore, ABC):
         if groups is None:
             return total_results, None
 
-        group_results = dict()
+        group_results = {}
         grouping = get_groupings(groups)
         for label, index in grouping.items():
             group_scores = individual_values[index]
@@ -144,7 +144,7 @@ def calculate_frechet_distance(activations_pred, activations_target, eps=1e-6):
         # if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
         if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-2):
             m = np.max(np.abs(covmean.imag))
-            raise ValueError('Imaginary component {}'.format(m))
+            raise ValueError(f'Imaginary component {m}')
         covmean = covmean.real
 
     tr_covmean = np.trace(covmean)
@@ -177,7 +177,7 @@ class FIDScore(EvaluatorScore):
     def get_value(self, groups=None, states=None):
         LOGGER.info("FIDscore get_value called")
         activations_pred, activations_target = zip(*states) if states is not None \
-            else (self.activations_pred, self.activations_target)
+                else (self.activations_pred, self.activations_target)
         activations_pred = torch.cat(activations_pred).cpu().numpy()
         activations_target = torch.cat(activations_target).cpu().numpy()
 
@@ -187,7 +187,7 @@ class FIDScore(EvaluatorScore):
         if groups is None:
             group_results = None
         else:
-            group_results = dict()
+            group_results = {}
             grouping = get_groupings(groups)
             for label, index in grouping.items():
                 if len(index) > 1:
@@ -321,7 +321,7 @@ class SegmentationAwarePairwiseScore(SegmentationAwareScore):
         if groups is None:
             return total_results, None
 
-        group_results = dict()
+        group_results = {}
         grouping = get_groupings(groups)
         for label, index in grouping.items():
             group_class_freq = target_class_freq_by_image_mask[index]
@@ -372,21 +372,27 @@ class SegmentationClassStats(SegmentationAwarePairwiseScore):
 
         pred_class_freq_diff = (pred_class_freq_by_image_mask - target_class_freq_by_image_mask).sum(0) / (target_class_freq_by_image_mask.sum(0) + 1e-3)
 
-        total_results = dict()
-        total_results.update({f'total_freq/{self.segm_idx2name[i]}': v
-                              for i, v in enumerate(target_class_freq_by_image_total_marginal)
-                              if v > 0})
-        total_results.update({f'mask_freq/{self.segm_idx2name[i]}': v
-                              for i, v in enumerate(target_class_freq_by_image_mask_marginal)
-                              if v > 0})
-        total_results.update({f'mask_freq_diff/{self.segm_idx2name[i]}': v
-                              for i, v in enumerate(pred_class_freq_diff)
-                              if target_class_freq_by_image_total_marginal[i] > 0})
-
+        total_results = (
+            {
+                f'total_freq/{self.segm_idx2name[i]}': v
+                for i, v in enumerate(target_class_freq_by_image_total_marginal)
+                if v > 0
+            }
+            | {
+                f'mask_freq/{self.segm_idx2name[i]}': v
+                for i, v in enumerate(target_class_freq_by_image_mask_marginal)
+                if v > 0
+            }
+            | {
+                f'mask_freq_diff/{self.segm_idx2name[i]}': v
+                for i, v in enumerate(pred_class_freq_diff)
+                if target_class_freq_by_image_total_marginal[i] > 0
+            }
+        )
         if groups is None:
             return total_results, None
 
-        group_results = dict()
+        group_results = {}
         grouping = get_groupings(groups)
         for label, index in grouping.items():
             group_target_class_freq_by_image_total = target_class_freq_by_image_total[index]
@@ -402,17 +408,27 @@ class SegmentationClassStats(SegmentationAwarePairwiseScore):
             group_pred_class_freq_diff = (group_pred_class_freq_by_image_mask - group_target_class_freq_by_image_mask).sum(0) / (
                     group_target_class_freq_by_image_mask.sum(0) + 1e-3)
 
-            cur_group_results = dict()
-            cur_group_results.update({f'total_freq/{self.segm_idx2name[i]}': v
-                                      for i, v in enumerate(group_target_class_freq_by_image_total_marginal)
-                                      if v > 0})
-            cur_group_results.update({f'mask_freq/{self.segm_idx2name[i]}': v
-                                      for i, v in enumerate(group_target_class_freq_by_image_mask_marginal)
-                                      if v > 0})
-            cur_group_results.update({f'mask_freq_diff/{self.segm_idx2name[i]}': v
-                                      for i, v in enumerate(group_pred_class_freq_diff)
-                                      if group_target_class_freq_by_image_total_marginal[i] > 0})
-
+            cur_group_results = (
+                {
+                    f'total_freq/{self.segm_idx2name[i]}': v
+                    for i, v in enumerate(
+                        group_target_class_freq_by_image_total_marginal
+                    )
+                    if v > 0
+                }
+                | {
+                    f'mask_freq/{self.segm_idx2name[i]}': v
+                    for i, v in enumerate(
+                        group_target_class_freq_by_image_mask_marginal
+                    )
+                    if v > 0
+                }
+                | {
+                    f'mask_freq_diff/{self.segm_idx2name[i]}': v
+                    for i, v in enumerate(group_pred_class_freq_diff)
+                    if group_target_class_freq_by_image_total_marginal[i] > 0
+                }
+            )
             group_results[label] = cur_group_results
         return total_results, group_results
 
@@ -492,7 +508,7 @@ class SegmentationAwareFID(SegmentationAwarePairwiseScore):
         if groups is None:
             return total_results, None
 
-        group_results = dict()
+        group_results = {}
         grouping = get_groupings(groups)
         for label, index in grouping.items():
             if len(index) > 1:

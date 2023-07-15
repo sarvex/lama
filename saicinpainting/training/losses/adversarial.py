@@ -100,11 +100,10 @@ class NonSaturatingWithR1(BaseAdversarialLoss):
 
     def generator_loss(self, real_batch: torch.Tensor, fake_batch: torch.Tensor,
                        discr_real_pred: torch.Tensor, discr_fake_pred: torch.Tensor,
-                       mask=None) \
-            -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+                       mask=None) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         fake_loss = F.softplus(-discr_fake_pred)
         if (self.mask_as_fake_target and self.extra_mask_weight_for_gen > 0) or \
-                not self.use_unmasked_for_gen:  # == if masked region should be treated differently
+                    not self.use_unmasked_for_gen:  # == if masked region should be treated differently
             mask = self.interpolate_mask(mask, discr_fake_pred.shape[-2:])
             if not self.use_unmasked_for_gen:
                 fake_loss = fake_loss * mask
@@ -112,7 +111,7 @@ class NonSaturatingWithR1(BaseAdversarialLoss):
                 pixel_weights = 1 + mask * self.extra_mask_weight_for_gen
                 fake_loss = fake_loss * pixel_weights
 
-        return fake_loss.mean() * self.weight, dict()
+        return fake_loss.mean() * self.weight, {}
 
     def pre_discriminator_step(self, real_batch: torch.Tensor, fake_batch: torch.Tensor,
                                generator: nn.Module, discriminator: nn.Module):
@@ -120,8 +119,7 @@ class NonSaturatingWithR1(BaseAdversarialLoss):
 
     def discriminator_loss(self, real_batch: torch.Tensor, fake_batch: torch.Tensor,
                            discr_real_pred: torch.Tensor, discr_fake_pred: torch.Tensor,
-                           mask=None) \
-            -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+                           mask=None) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
 
         real_loss = F.softplus(-discr_real_pred)
         grad_penalty = make_r1_gp(discr_real_pred, real_batch) * self.gp_coef
@@ -133,8 +131,8 @@ class NonSaturatingWithR1(BaseAdversarialLoss):
             # use_unmasked_for_discr=False only makes sense for fakes;
             # for reals there is no difference beetween two regions
             fake_loss = fake_loss * mask
-            if self.mask_as_fake_target:
-                fake_loss = fake_loss + (1 - mask) * F.softplus(-discr_fake_pred)
+        if self.mask_as_fake_target:
+            fake_loss = fake_loss + (1 - mask) * F.softplus(-discr_fake_pred)
 
         sum_discr_loss = real_loss + grad_penalty + fake_loss
         metrics = dict(discr_real_out=discr_real_pred.mean(),
@@ -150,7 +148,7 @@ class BCELoss(BaseAdversarialLoss):
     def generator_loss(self, discr_fake_pred: torch.Tensor) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
         real_mask_gt = torch.zeros(discr_fake_pred.shape).to(discr_fake_pred.device)
         fake_loss = self.bce_loss(discr_fake_pred, real_mask_gt) * self.weight
-        return fake_loss, dict()
+        return fake_loss, {}
 
     def pre_discriminator_step(self, real_batch: torch.Tensor, fake_batch: torch.Tensor,
                                generator: nn.Module, discriminator: nn.Module):
