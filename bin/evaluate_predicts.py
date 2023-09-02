@@ -24,12 +24,12 @@ def main(args):
     enable_segm = config.get('segmentation', dict(enable=False)).get('enable', False)
     if enable_segm:
         weights_path = os.path.expandvars(config.segmentation.weights_path)
-        metrics.update(dict(
+        metrics |= dict(
             segm_stats=SegmentationClassStats(weights_path=weights_path),
             segm_ssim=SegmentationAwareSSIM(weights_path=weights_path),
             segm_lpips=SegmentationAwareLPIPS(weights_path=weights_path),
-            segm_fid=SegmentationAwareFID(weights_path=weights_path)
-        ))
+            segm_fid=SegmentationAwareFID(weights_path=weights_path),
+        )
     evaluator = InpaintingEvaluator(dataset, scores=metrics,
                                     integral_title='lpips_fid100_f1', integral_func=lpips_fid100_f1,
                                     **config.evaluator_kwargs)

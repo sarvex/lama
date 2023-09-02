@@ -119,7 +119,7 @@ class DefaultInpaintingTrainingModule(BaseInpaintingTrainingModule):
                                                                          mask=mask_for_discr)
         total_loss = total_loss + adv_gen_loss
         metrics['gen_adv'] = adv_gen_loss
-        metrics.update(add_prefix_to_keys(adv_metrics, 'adv_'))
+        metrics |= add_prefix_to_keys(adv_metrics, 'adv_')
 
         # feature matching
         if self.config.losses.feature_matching.weight > 0:
@@ -139,8 +139,6 @@ class DefaultInpaintingTrainingModule(BaseInpaintingTrainingModule):
 
     def discriminator_loss(self, batch):
         total_loss = 0
-        metrics = {}
-
         predicted_img = batch[self.image_to_discriminator].detach()
         self.adversarial_loss.pre_discriminator_step(real_batch=batch['image'], fake_batch=predicted_img,
                                                      generator=self.generator, discriminator=self.discriminator)
@@ -151,9 +149,9 @@ class DefaultInpaintingTrainingModule(BaseInpaintingTrainingModule):
                                                                                discr_real_pred=discr_real_pred,
                                                                                discr_fake_pred=discr_fake_pred,
                                                                                mask=batch['mask'])
-        total_loss = total_loss + adv_discr_loss
-        metrics['discr_adv'] = adv_discr_loss
-        metrics.update(add_prefix_to_keys(adv_metrics, 'adv_'))
+        total_loss += adv_discr_loss
+        metrics = {'discr_adv': adv_discr_loss}
+        metrics |= add_prefix_to_keys(adv_metrics, 'adv_')
 
 
         if batch.get('use_fake_fakes', False):
